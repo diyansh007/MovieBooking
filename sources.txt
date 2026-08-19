@@ -21,5 +21,6 @@ src/model/User.java
 src/model/TwoDMovie.java
 src/model/Movie.java
 src/model/ThreeDMovie.java
+src/main/WebApp.java
 src/main/MainApp.java
 src/factory/MovieFactory.java
