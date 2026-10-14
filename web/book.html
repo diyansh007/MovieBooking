@@ -1,1 +1,60 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Book Ticket · Movie Booking</title><link rel="stylesheet" href="styles.css"></head><body data-page="book"><header class="topbar"><a class="brand" href="index.html"><span class="brand-mark">M</span> movie booking</a><a class="back-link" href="index.html">← Main menu</a></header><main class="app-shell"><p class="eyebrow">STEP 2 OF 5</p><h1>Book Ticket</h1><p class="page-lead">Select your movie, format, and number of seats.</p><form id="bookingForm" class="page-form"><label>Movie<select name="title"><option>Avengers</option><option>Interstellar</option><option>Spider-Man</option><option>Avatar</option></select></label><label>Format<select name="format"><option value="2D">2D</option><option value="3D">3D</option><option value="IMAX">IMAX</option></select></label><label>Number of seats<input name="seats" type="number" value="1" min="1" max="60" required></label><div class="price-row"><span>Total calculated price</span><strong id="bookingPrice">₹ 220.00</strong></div><p id="formError" class="form-error"></p><button class="primary-button">Confirm booking <span>→</span></button></form></main><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Book Ticket · Movie Booking</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="book">
+  <header class="topbar">
+    <a class="brand" href="index.html"><span class="brand-mark">M</span> movie booking</a>
+    <a class="back-link" href="index.html">← Main menu</a>
+  </header>
+  <main class="app-shell narrow">
+    <p class="eyebrow">STEP 2 OF 5</p>
+    <h1>Book Ticket</h1>
+    <p class="page-lead">Select your movie, format, pricing policy, and number of seats.</p>
+    <form id="bookingForm" class="page-form">
+      <label>Movie
+        <select name="title">
+          <option>Avengers</option>
+          <option>Interstellar</option>
+          <option>Spider-Man</option>
+          <option>Avatar</option>
+        </select>
+      </label>
+      <label>Format
+        <select name="format">
+          <option value="2D">2D</option>
+          <option value="3D">3D</option>
+          <option value="IMAX">IMAX</option>
+        </select>
+      </label>
+      <label>Pricing strategy
+        <select name="strategy">
+          <option value="standard">Standard</option>
+          <option value="student">Student Discount</option>
+          <option value="weekend">Weekend</option>
+          <option value="group">Group Discount</option>
+        </select>
+      </label>
+      <label>Number of seats
+        <input name="seats" type="number" value="1" min="1" max="60" required>
+      </label>
+      <div class="price-box">
+        <div class="price-row"><span>Base price</span><strong id="bookingBase">₹ 0.00</strong></div>
+        <div class="price-row"><span>Strategy adjustment</span><strong id="bookingAdjustment">₹ 0.00</strong></div>
+        <div class="price-row price-total"><span>Total</span><strong id="bookingPrice">₹ 0.00</strong></div>
+      </div>
+      <p id="formError" class="form-error"></p>
+      <div class="inline-actions">
+        <button type="button" class="secondary-button" id="saveDraftButton">Save draft state</button>
+        <button type="button" class="secondary-button" id="undoDraftButton">Undo last change</button>
+      </div>
+      <button class="primary-button">Confirm booking <span>→</span></button>
+    </form>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -14,8 +14,8 @@ public class BookingDAO {
         String sql =
                 "INSERT INTO bookings " +
                 "(user_id, movie_name, movie_type, seats, " +
-                "total_amount, booking_status) " +
-                "VALUES (?, ?, ?, ?, ?, ?)";
+                "total_amount, booking_status, pricing_strategy) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection connection = DBConnection.getConnection();
              PreparedStatement statement =
@@ -29,6 +29,7 @@ public class BookingDAO {
             statement.setInt(4, booking.getSeats());
             statement.setDouble(5, booking.getTotalAmount());
             statement.setString(6, booking.getBookingStatus());
+            statement.setString(7, booking.getPricingStrategy());
 
             statement.executeUpdate();
 
@@ -36,7 +37,9 @@ public class BookingDAO {
                     statement.getGeneratedKeys();
 
             if (result.next()) {
-                return result.getInt(1);
+                int generatedId = result.getInt(1);
+                booking.setBookingId(generatedId);
+                return generatedId;
             }
 
         } catch (Exception e) {
@@ -53,7 +56,7 @@ public class BookingDAO {
         List<Booking> bookings = new ArrayList<>();
 
         String sql =
-                "SELECT * FROM bookings WHERE user_id = ?";
+                "SELECT * FROM bookings WHERE user_id = ? ORDER BY booking_id DESC";
 
         try (Connection connection = DBConnection.getConnection();
              PreparedStatement statement =
@@ -73,7 +76,8 @@ public class BookingDAO {
                         result.getString("movie_type"),
                         result.getInt("seats"),
                         result.getDouble("total_amount"),
-                        result.getString("booking_status")
+                        result.getString("booking_status"),
+                        result.getString("pricing_strategy")
                 ));
             }
 
@@ -84,6 +88,31 @@ public class BookingDAO {
         }
 
         return bookings;
+    }
+
+    public Booking findBookingById(int bookingId, int userId) {
+        String sql = "SELECT * FROM bookings WHERE booking_id = ? AND user_id = ?";
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, bookingId);
+            statement.setInt(2, userId);
+            ResultSet result = statement.executeQuery();
+            if (result.next()) {
+                return new Booking(
+                        result.getInt("booking_id"),
+                        result.getInt("user_id"),
+                        result.getString("movie_name"),
+                        result.getString("movie_type"),
+                        result.getInt("seats"),
+                        result.getDouble("total_amount"),
+                        result.getString("booking_status"),
+                        result.getString("pricing_strategy")
+                );
+            }
+        } catch (Exception e) {
+            System.out.println("Booking lookup error: " + e.getMessage());
+        }
+        return null;
     }
 
     public boolean updateBookingStatus(

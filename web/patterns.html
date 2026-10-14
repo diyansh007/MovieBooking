@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pattern Demo · Movie Booking</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="patterns">
+  <header class="topbar">
+    <a class="brand" href="index.html"><span class="brand-mark">M</span> movie booking</a>
+    <a class="back-link" href="index.html">← Main menu</a>
+  </header>
+  <main class="app-shell">
+    <p class="eyebrow">DESIGN PATTERNS</p>
+    <h1>Pattern Demonstration</h1>
+    <p class="page-lead">This project uses multiple patterns in the real booking workflow, not as isolated examples.</p>
+    <div class="pattern-grid">
+      <article class="pattern-card"><h3>Factory</h3><p><strong>Definition:</strong> Creates concrete movie implementations without exposing creation logic.</p><p><strong>Classes:</strong> MovieFactory, TwoDMovie, ThreeDMovie, ImaxMovie</p><p><strong>Used in:</strong> booking form creates the movie selected by format.</p></article>
+      <article class="pattern-card"><h3>Singleton</h3><p><strong>Definition:</strong> One shared instance coordinates the system.</p><p><strong>Classes:</strong> BookingSystem</p><p><strong>Used in:</strong> all real booking actions flow through the shared booking coordinator.</p></article>
+      <article class="pattern-card"><h3>Chain of Responsibility</h3><p><strong>Definition:</strong> Each handler validates one step and passes the request forward.</p><p><strong>Classes:</strong> SeatAvailabilityHandler, PaymentHandler, TicketConfirmationHandler</p><p><strong>Used in:</strong> seat check → payment verification → ticket confirmation.</p></article>
+      <article class="pattern-card"><h3>Observer</h3><p><strong>Definition:</strong> Subscribers react to successful booking state changes.</p><p><strong>Classes:</strong> BookingSubject, CustomerNotifier, AdminNotifier, ManagerNotifier</p><p><strong>Used in:</strong> after a booking is persisted successfully, observers receive notifications.</p></article>
+      <article class="pattern-card"><h3>Template Method</h3><p><strong>Definition:</strong> A fixed workflow plus variable hooks for different booking types.</p><p><strong>Classes:</strong> BookingWorkflowTemplate, StandardBookingWorkflow, GroupBookingWorkflow</p><p><strong>Used in:</strong> sequence: prepare → validate → persist → notify → finalize.</p></article>
+      <article class="pattern-card"><h3>Strategy</h3><p><strong>Definition:</strong> Interchangeable pricing arrangements.</p><p><strong>Classes:</strong> PricingStrategy, StandardPricingStrategy, StudentDiscountStrategy, WeekendPricingStrategy, GroupDiscountStrategy, PricingService</p><p><strong>Used in:</strong> booking form selects policy, backend calculates authoritative total.</p></article>
+      <article class="pattern-card"><h3>Builder</h3><p><strong>Definition:</strong> Step-by-step construction of valid booking objects.</p><p><strong>Classes:</strong> BookingBuilder, ConcreteBookingBuilder, BookingDirector</p><p><strong>Used in:</strong> booking request created with validated user, movie, format, seats, amount, and strategy.</p></article>
+      <article class="pattern-card"><h3>Prototype</h3><p><strong>Definition:</strong> Clone an existing booking into an editable booking draft.</p><p><strong>Classes:</strong> BookingPrototype, BookingDraft</p><p><strong>Used in:</strong> Book Again loads a cloned draft without modifying the original booking record.</p></article>
+      <article class="pattern-card"><h3>Mediator</h3><p><strong>Definition:</strong> Central controller coordinates related booking tasks.</p><p><strong>Classes:</strong> BookingMediator, MovieBookingMediator</p><p><strong>Used in:</strong> request flow for creating bookings, pricing quotes, and draft operations is coordinated centrally.</p></article>
+      <article class="pattern-card"><h3>Memento</h3><p><strong>Definition:</strong> Save and restore prior draft state.</p><p><strong>Classes:</strong> BookingDraft, BookingDraftMemento, BookingDraftCaretaker</p><p><strong>Used in:</strong> Save Draft State and Undo Last Change recover the previous form state.</p></article>
+      <article class="pattern-card"><h3>MVC</h3><p><strong>Definition:</strong> Separate domain data, controller logic, and view interaction.</p><p><strong>Classes:</strong> model package, controller package, web files</p><p><strong>Used in:</strong> routes delegate business operations to controllers while HTML/JS render the user interface.</p></article>
+      <article class="pattern-card"><h3>DAO</h3><p><strong>Definition:</strong> Encapsulates persistent database access.</p><p><strong>Classes:</strong> UserDAO, BookingDAO</p><p><strong>Used in:</strong> user authentication, booking storage, retrieval, and cancellation all go through the data access layer.</p></article>
+    </div>
+  </main>
+</body>
+</html>

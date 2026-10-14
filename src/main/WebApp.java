@@ -2,11 +2,13 @@ package main;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import controller.BookingController;
+import controller.DraftController;
+import controller.HistoryController;
+import controller.PricingController;
+import dao.BookingDAO;
 import dao.UserDAO;
 import database.DBConnection;
-import factory.MovieFactory;
-import model.Booking;
-import model.Movie;
 import model.User;
 import singleton.BookingSystem;
 
@@ -18,6 +20,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,6 +34,11 @@ public class WebApp {
     private static final Path WEB_ROOT = Path.of("web").toAbsolutePath().normalize();
     private static final Map<String, User> SESSIONS = new ConcurrentHashMap<>();
     private static final Map<String, TerminalSession> TERMINALS = new ConcurrentHashMap<>();
+    private static final BookingDAO BOOKING_DAO = new BookingDAO();
+    private static final BookingController BOOKING_CONTROLLER = new BookingController(BOOKING_DAO);
+    private static final HistoryController HISTORY_CONTROLLER = new HistoryController(BOOKING_DAO);
+    private static final PricingController PRICING_CONTROLLER = new PricingController();
+    private static final DraftController DRAFT_CONTROLLER = new DraftController();
 
     public static void main(String[] args) throws IOException {
         DBConnection.initializeDatabase();
@@ -67,12 +75,67 @@ public class WebApp {
                 return;
             }
 
-            User user = SESSIONS.get(exchange.getRequestHeaders().getFirst("X-Session-Token"));
+            String token = exchange.getRequestHeaders().getFirst("X-Session-Token");
+            if (token == null || token.isBlank()) {
+                json(exchange, 401, "{\"error\":\"Please sign in to continue.\"}");
+                return;
+            }
+            User user = SESSIONS.get(token);
             if (user == null) {
                 json(exchange, 401, "{\"error\":\"Please sign in to continue.\"}");
                 return;
             }
-            String token = exchange.getRequestHeaders().getFirst("X-Session-Token");
+
+            if (path.equals("/api/pricing") && method.equals("POST")) {
+                String body = readBody(exchange);
+                Map<String, Object> quote = PRICING_CONTROLLER.quote(value(body, "title"), value(body, "format"), integer(value(body, "seats")), value(body, "strategy"));
+                json(exchange, quote.containsKey("error") ? 400 : 200, mapToJson(quote));
+                return;
+            }
+
+            if (path.equals("/api/drafts/save") && method.equals("POST")) {
+                String body = readBody(exchange);
+                Map<String, Object> saved = DRAFT_CONTROLLER.saveDraft(token, draftFromJson(body));
+                json(exchange, 200, mapToJson(saved));
+                return;
+            }
+
+            if (path.equals("/api/drafts/undo") && method.equals("POST")) {
+                Map<String, Object> restored = DRAFT_CONTROLLER.undoDraft(token);
+                json(exchange, restored.containsKey("error") ? 400 : 200, mapToJson(restored));
+                return;
+            }
+
+            if (path.equals("/api/bookings") && method.equals("GET")) {
+                json(exchange, 200, bookingsJson(BookingSystem.getInstance().getUserBookings(user.getUserId())));
+                return;
+            }
+            if (path.equals("/api/bookings") && method.equals("POST")) {
+                String body = readBody(exchange);
+                String title = value(body, "title");
+                String format = value(body, "format");
+                int seats = integer(value(body, "seats"));
+                String strategy = value(body, "strategy");
+                Map<String, Object> result = BOOKING_CONTROLLER.createBooking(user.getUserId(), title, format, seats, strategy);
+                if (result.containsKey("error")) {
+                    json(exchange, 400, mapToJson(result));
+                    return;
+                }
+                json(exchange, (Boolean) result.getOrDefault("success", false) ? 201 : 400, mapToJson(result));
+                return;
+            }
+            if (path.matches("/api/bookings/\\d+/draft") && method.equals("POST")) {
+                int id = Integer.parseInt(path.split("/")[3]);
+                Map<String, Object> draft = HISTORY_CONTROLLER.createDraft(id, user.getUserId());
+                json(exchange, draft.containsKey("error") ? 404 : 200, mapToJson(draft));
+                return;
+            }
+            if (path.matches("/api/bookings/\\d+/cancel") && method.equals("POST")) {
+                int id = Integer.parseInt(path.split("/")[3]);
+                Map<String, Object> result = BOOKING_CONTROLLER.handleCancel(id, user.getUserId());
+                json(exchange, (Boolean) result.getOrDefault("success", false) ? 200 : 404, mapToJson(result));
+                return;
+            }
             if (path.equals("/api/terminal/start") && method.equals("POST")) {
                 TerminalSession oldTerminal = TERMINALS.remove(token);
                 if (oldTerminal != null) oldTerminal.close();
@@ -101,32 +164,6 @@ public class WebApp {
                 json(exchange, 200, terminal.json());
                 return;
             }
-            if (path.equals("/api/bookings") && method.equals("GET")) {
-                json(exchange, 200, bookingsJson(BookingSystem.getInstance().getUserBookings(user.getUserId())));
-                return;
-            }
-            if (path.equals("/api/bookings") && method.equals("POST")) {
-                String body = readBody(exchange);
-                String title = value(body, "title");
-                String format = value(body, "format");
-                int seats = integer(value(body, "seats"));
-                if (seats < 1 || seats > 60 || !validMovie(title) || !validFormat(format)) {
-                    json(exchange, 400, "{\"error\":\"Choose a movie, format, and between 1 and 60 seats.\"}");
-                    return;
-                }
-                Movie movie = MovieFactory.createMovie(format, title);
-                Booking booking = new Booking(0, user.getUserId(), title, format, seats,
-                        movie.calculatePrice(seats), "PENDING");
-                boolean success = BookingSystem.getInstance().processBooking(booking);
-                json(exchange, success ? 201 : 400, success ? "{\"message\":\"Your tickets are confirmed.\"}" : "{\"error\":\"We could not confirm this booking.\"}");
-                return;
-            }
-            if (path.matches("/api/bookings/\\d+/cancel") && method.equals("POST")) {
-                int id = Integer.parseInt(path.split("/")[3]);
-                boolean changed = BookingSystem.getInstance().cancelBooking(id, user.getUserId());
-                json(exchange, changed ? 200 : 404, changed ? "{\"message\":\"Booking cancelled.\"}" : "{\"error\":\"Booking not found.\"}");
-                return;
-            }
             json(exchange, 404, "{\"error\":\"Endpoint not found.\"}");
         } catch (Exception exception) {
             exception.printStackTrace();
@@ -147,27 +184,96 @@ public class WebApp {
     }
 
     private static String readBody(HttpExchange exchange) throws IOException { return new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8); }
-    private static String value(String json, String key) { Matcher m = Pattern.compile("\\\"" + key + "\\\"\\s*:\\s*\\\"?([^\\\",}]*)").matcher(json); return m.find() ? m.group(1).replace("\\\\\"", "\"") : ""; }
-    private static int integer(String raw) { try { return Integer.parseInt(raw); } catch (NumberFormatException e) { return -1; } }
-    private static boolean validMovie(String title) { return List.of("Avengers", "Interstellar", "Spider-Man", "Avatar").contains(title); }
-    private static boolean validFormat(String format) { return List.of("2D", "3D", "IMAX").contains(format); }
+    private static String value(String body, String key) {
+        if (body == null || body.isBlank()) return "";
+        Matcher jsonMatcher = Pattern.compile("\\\"" + key + "\\\"\\s*:\\s*\\\"?([^\\\",}]*)").matcher(body);
+        if (jsonMatcher.find()) {
+            return jsonMatcher.group(1).replace("\\\\\"", "\"");
+        }
+        String formKey = key + "=";
+        int index = body.indexOf(formKey);
+        if (index >= 0) {
+            int start = index + formKey.length();
+            int end = body.indexOf('&', start);
+            if (end < 0) end = body.length();
+            String value = body.substring(start, end);
+            return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        }
+        return "";
+    }
+    private static int integer(String raw) { try { return Integer.parseInt(raw == null ? "" : raw.trim()); } catch (NumberFormatException e) { return -1; } }
+    private static double decimal(String raw) { try { return Double.parseDouble(raw == null ? "" : raw.trim()); } catch (NumberFormatException e) { return 0.0; } }
+    private static Map<String, Object> draftFromJson(String body) {
+        Map<String, Object> draft = new LinkedHashMap<>();
+        draft.put("movie", value(body, "movie"));
+        draft.put("format", value(body, "format"));
+        draft.put("seats", integer(value(body, "seats")));
+        draft.put("strategy", value(body, "strategy"));
+        draft.put("amount", decimal(value(body, "amount")));
+        return draft;
+    }
+    private static String mapToJson(Map<String, Object> values) {
+        StringBuilder json = new StringBuilder("{");
+        boolean first = true;
+        for (Map.Entry<String, Object> entry : values.entrySet()) {
+            if (!first) json.append(',');
+            first = false;
+            json.append('"').append(entry.getKey()).append('"').append(':');
+            Object value = entry.getValue();
+            if (value instanceof Number || value instanceof Boolean) {
+                json.append(value);
+            } else if (value == null) {
+                json.append("null");
+            } else if (value instanceof java.util.List) {
+                json.append(listToJson((java.util.List<?>) value));
+            } else {
+                json.append('"').append(escape(String.valueOf(value))).append('"');
+            }
+        }
+        return json.append('}').toString();
+    }
+    private static String listToJson(java.util.List<?> values) {
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) json.append(',');
+            Object value = values.get(i);
+            if (value instanceof Number || value instanceof Boolean) {
+                json.append(value);
+            } else if (value instanceof Map) {
+                json.append(mapToJson((Map<String, Object>) value));
+            } else {
+                json.append('"').append(escape(String.valueOf(value))).append('"');
+            }
+        }
+        return json.append(']').toString();
+    }
     private static String escape(String text) {
-        return text.replace("\\", "\\\\")
+        return text == null ? "" : text.replace("\\", "\\\\")
                 .replace("\"", "\\\"")
                 .replace("\n", "\\n")
                 .replace("\r", "\\r")
                 .replace("\t", "\\t");
     }
-    private static String bookingsJson(List<Booking> bookings) {
+    private static String bookingsJson(List<model.Booking> bookings) {
         StringBuilder json = new StringBuilder("{\"bookings\":[");
-        for (int i = 0; i < bookings.size(); i++) { Booking b = bookings.get(i); if (i > 0) json.append(','); json.append("{\"id\":").append(b.getBookingId()).append(",\"title\":\"").append(escape(b.getMovieName())).append("\",\"format\":\"").append(escape(b.getMovieType())).append("\",\"seats\":").append(b.getSeats()).append(",\"amount\":").append(b.getTotalAmount()).append(",\"status\":\"").append(escape(b.getBookingStatus())).append("\"}"); }
+        for (int i = 0; i < bookings.size(); i++) {
+            model.Booking b = bookings.get(i);
+            if (i > 0) json.append(',');
+            json.append("{\"id\":").append(b.getBookingId())
+                    .append(",\"title\":\"").append(escape(b.getMovieName())).append("\"")
+                    .append(",\"format\":\"").append(escape(b.getMovieType())).append("\"")
+                    .append(",\"seats\":").append(b.getSeats())
+                    .append(",\"amount\":").append(b.getTotalAmount())
+                    .append(",\"status\":\"").append(escape(b.getBookingStatus())).append("\"")
+                    .append(",\"strategy\":\"").append(escape(b.getPricingStrategy())).append("\"}");
+        }
         return json.append("]}").toString();
     }
     private static void json(HttpExchange exchange, int status, String data) throws IOException { byte[] bytes = data.getBytes(StandardCharsets.UTF_8); exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8"); exchange.sendResponseHeaders(status, bytes.length); try (OutputStream output = exchange.getResponseBody()) { output.write(bytes); } }
 
     /** Runs only the fixed console demonstration command; it never accepts shell commands from the browser. */
     private static final class TerminalSession {
-        private static final String DISPLAY_COMMAND = "cd /Users/diyanshwasnik/Downloads/MovieBooking\nfind src -name \\\"*.java\\\" > sources.txt\njavac -cp sqlite-jdbc-3.53.2.1.jar -d bin @sources.txt\njava -cp \\\"bin:sqlite-jdbc-3.53.2.1.jar\\\" main.MainApp";
+        private static final String DISPLAY_COMMAND = "cd /Users/diyanshwasnik/Downloads/MovieBooking\nfind src -name \"*.java\" > sources.txt\njavac -cp sqlite-jdbc-3.53.2.1.jar -d bin @sources.txt\njava -cp \"bin:sqlite-jdbc-3.53.2.1.jar\" main.MainApp";
         private final StringBuilder output = new StringBuilder("$ ").append(DISPLAY_COMMAND).append("\n\n");
         private Process process;
 

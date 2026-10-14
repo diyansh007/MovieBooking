@@ -10,6 +10,8 @@ import observer.AdminNotifier;
 import observer.BookingSubject;
 import observer.CustomerNotifier;
 import observer.ManagerNotifier;
+import template.BookingWorkflowTemplate;
+import template.StandardBookingWorkflow;
 
 import java.util.List;
 
@@ -55,62 +57,18 @@ public class BookingSystem {
     }
 
     /*
-     * Processes a booking using Chain of Responsibility.
+     * Processes a booking using Template Method + Chain of Responsibility.
      */
     public boolean processBooking(Booking booking) {
+        BookingWorkflowTemplate workflow = new StandardBookingWorkflow(bookingDAO, bookingSubject);
+        return workflow.execute(booking);
+    }
 
-        // Create handlers
-        BookingHandler seatCheck =
-                new SeatAvailabilityHandler();
-
-        BookingHandler paymentCheck =
-                new PaymentHandler();
-
-        BookingHandler confirmation =
-                new TicketConfirmationHandler();
-
-        // Connect handlers
-        seatCheck.setNext(paymentCheck);
-        paymentCheck.setNext(confirmation);
-
-        // Start the chain
-        boolean success = seatCheck.handle(booking);
-
-        if (!success) {
-            return false;
+    public boolean processBookingWithWorkflow(Booking booking, BookingWorkflowTemplate workflow) {
+        if (workflow == null) {
+            return processBooking(booking);
         }
-
-        // Save booking in database
-        int bookingId =
-                bookingDAO.insertBooking(booking);
-
-        if (bookingId == -1) {
-            System.out.println(
-                    "Booking could not be saved.");
-            return false;
-        }
-
-        /*
-         * Set generated database ID.
-         */
-        Booking confirmedBooking = new Booking(
-                bookingId,
-                booking.getUserId(),
-                booking.getMovieName(),
-                booking.getMovieType(),
-                booking.getSeats(),
-                booking.getTotalAmount(),
-                booking.getBookingStatus()
-        );
-
-        System.out.println();
-        System.out.println("--- Notifications ---");
-
-        // Notify Customer, Admin and Manager
-        bookingSubject.notifyObservers(
-                confirmedBooking);
-
-        return true;
+        return workflow.execute(booking);
     }
 
     /*
@@ -128,9 +86,29 @@ public class BookingSystem {
             int bookingId,
             int userId) {
 
-        return bookingDAO.updateBookingStatus(
+        Booking existing = bookingDAO.findBookingById(bookingId, userId);
+        boolean updated = bookingDAO.updateBookingStatus(
                 bookingId,
                 userId,
                 "CANCELLED");
+
+        if (updated && existing != null) {
+            Booking cancelledBooking = new Booking(
+                    existing.getBookingId(),
+                    existing.getUserId(),
+                    existing.getMovieName(),
+                    existing.getMovieType(),
+                    existing.getSeats(),
+                    existing.getTotalAmount(),
+                    "CANCELLED",
+                    existing.getPricingStrategy());
+            bookingSubject.notifyObservers(cancelledBooking);
+        }
+
+        return updated;
+    }
+
+    public BookingSubject getBookingSubject() {
+        return bookingSubject;
     }
 }

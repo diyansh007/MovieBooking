@@ -2,6 +2,7 @@ package database;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -45,6 +46,7 @@ public class DBConnection {
                     seats INTEGER NOT NULL,
                     total_amount REAL NOT NULL,
                     booking_status TEXT NOT NULL,
+                    pricing_strategy TEXT NOT NULL DEFAULT 'standard',
                     FOREIGN KEY (user_id)
                     REFERENCES users(user_id)
                     ON DELETE CASCADE
@@ -66,6 +68,15 @@ public class DBConnection {
 
             statement.execute(createUsers);
             statement.execute(createBookings);
+
+            boolean hasPricingStrategy = false;
+            try (ResultSet columns = connection.getMetaData().getColumns(null, null, "bookings", "pricing_strategy")) {
+                hasPricingStrategy = columns.next();
+            }
+            if (!hasPricingStrategy) {
+                statement.execute("ALTER TABLE bookings ADD COLUMN pricing_strategy TEXT NOT NULL DEFAULT 'standard'");
+            }
+
             statement.execute(insertStudent);
             statement.execute(insertAdmin);
 
