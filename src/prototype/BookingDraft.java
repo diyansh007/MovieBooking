@@ -22,13 +22,13 @@ public class BookingDraft extends Booking implements BookingPrototype<BookingDra
     @Override
     public BookingDraft clone() {
         BookingDraft draft = new BookingDraft(
-                this.getBookingId(),
+                0,
                 this.getUserId(),
                 this.getMovieName(),
                 this.getMovieType(),
                 this.getSeats(),
                 this.getTotalAmount(),
-                this.getBookingStatus(),
+                "PENDING",
                 this.getPricingStrategy());
         draft.setPricingPolicy(this.getPricingStrategy());
         return draft;

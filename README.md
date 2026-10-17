@@ -12,6 +12,7 @@ This project is a Java + SQLite movie-booking application that keeps the origina
 - Observer notifications for successful booking and cancellation
 - Builder-based booking creation
 - Book Again using a cloned draft prototype
+- Mediator-coordinated booking creation and Book Again draft creation
 - Draft save/undo using Memento snapshots
 - Mediator-based coordination for the booking flow
 - MVC-style controller separation for backend operations
@@ -128,3 +129,7 @@ movie_booking.db
 - This is still a lab project and not a production payment system.
 - The payment step is deliberately simulated and does not call a real payment gateway.
 - Seat availability is still a simplified validation model rather than a full timetable/seat-map system.
+
+## Demonstrating the newer patterns
+
+Open `/patterns.html` for a guided live walkthrough. Create a booking to exercise the Mediator, Builder, Strategy, Template Method, Chain, DAO, and Observer together. Select at least four seats to use the group workflow. From booking history, choose **Book Again** to create an independent Prototype draft; the original booking is not changed, and the draft receives a fresh unsaved identity. On the booking form, save a draft state, edit its fields, and undo to restore the Memento snapshot.

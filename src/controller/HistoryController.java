@@ -1,6 +1,8 @@
 package controller;
 
 import dao.BookingDAO;
+import mediator.BookingMediator;
+import mediator.MovieBookingMediator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,9 +10,15 @@ import model.Booking;
 
 public class HistoryController {
     private final BookingDAO bookingDAO;
+    private final BookingMediator bookingMediator;
 
     public HistoryController(BookingDAO bookingDAO) {
+        this(bookingDAO, new MovieBookingMediator(bookingDAO));
+    }
+
+    public HistoryController(BookingDAO bookingDAO, BookingMediator bookingMediator) {
         this.bookingDAO = bookingDAO;
+        this.bookingMediator = bookingMediator;
     }
 
     public Map<String, Object> listBookings(int userId) {
@@ -21,17 +29,6 @@ public class HistoryController {
     }
 
     public Map<String, Object> createDraft(int bookingId, int userId) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        Booking booking = bookingDAO.findBookingById(bookingId, userId);
-        if (booking == null) {
-            response.put("error", "Booking not found.");
-            return response;
-        }
-        response.put("movie", booking.getMovieName());
-        response.put("format", booking.getMovieType());
-        response.put("seats", booking.getSeats());
-        response.put("strategy", booking.getPricingStrategy());
-        response.put("amount", booking.getTotalAmount());
-        return response;
+        return bookingMediator.prepareBookAgainDraft(bookingId, userId);
     }
 }

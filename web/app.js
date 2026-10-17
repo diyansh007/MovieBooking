@@ -80,6 +80,23 @@ if (page === 'login') {
 
 if (page === 'book' && requireLogin()) {
   const form = $('#bookingForm');
+  const savedDraft = localStorage.getItem('movieBookingDraft');
+  if (savedDraft) {
+    try {
+      const draft = JSON.parse(savedDraft);
+      form.title.value = draft.movie || form.title.value;
+      form.format.value = draft.format || form.format.value;
+      form.seats.value = draft.seats || 1;
+      form.strategy.value = draft.strategy || 'standard';
+      const notice = $('#draftNotice');
+      notice.textContent = `Book Again draft from booking #${draft.sourceBookingId} is ready. Review or change it before confirming.`;
+      notice.hidden = false;
+      localStorage.removeItem('movieBookingDraft');
+    } catch (err) {
+      localStorage.removeItem('movieBookingDraft');
+      error('The saved booking draft could not be loaded.');
+    }
+  }
   form.oninput = () => refreshPricing(form);
   form.onchange = () => refreshPricing(form);
   form.onsubmit = async event => {
@@ -133,8 +150,8 @@ if (page === 'bookings' && requireLogin()) {
       button.onclick = async () => {
         try {
           const draft = await request(`/api/bookings/${button.dataset.bookAgain}/draft`, { method: 'POST' });
-          location.href = 'book.html';
           localStorage.setItem('movieBookingDraft', JSON.stringify(draft));
+          location.href = 'book.html';
         } catch (err) {
           alert(err.message);
         }

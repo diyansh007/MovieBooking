@@ -9,6 +9,8 @@ import controller.PricingController;
 import dao.BookingDAO;
 import dao.UserDAO;
 import database.DBConnection;
+import mediator.BookingMediator;
+import mediator.MovieBookingMediator;
 import model.User;
 import singleton.BookingSystem;
 
@@ -35,8 +37,9 @@ public class WebApp {
     private static final Map<String, User> SESSIONS = new ConcurrentHashMap<>();
     private static final Map<String, TerminalSession> TERMINALS = new ConcurrentHashMap<>();
     private static final BookingDAO BOOKING_DAO = new BookingDAO();
-    private static final BookingController BOOKING_CONTROLLER = new BookingController(BOOKING_DAO);
-    private static final HistoryController HISTORY_CONTROLLER = new HistoryController(BOOKING_DAO);
+    private static final BookingMediator BOOKING_MEDIATOR = new MovieBookingMediator(BOOKING_DAO);
+    private static final BookingController BOOKING_CONTROLLER = new BookingController(BOOKING_DAO, BOOKING_MEDIATOR);
+    private static final HistoryController HISTORY_CONTROLLER = new HistoryController(BOOKING_DAO, BOOKING_MEDIATOR);
     private static final PricingController PRICING_CONTROLLER = new PricingController();
     private static final DraftController DRAFT_CONTROLLER = new DraftController();
 

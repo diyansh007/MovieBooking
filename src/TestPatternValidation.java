@@ -80,6 +80,7 @@ public class TestPatternValidation {
         prototype.BookingDraft clone = original.clone();
         clone.setSeats(2);
         require(original.getSeats() == 4, "Prototype clone should be an independent draft");
+        require(clone.getBookingId() == 0 && "PENDING".equals(clone.getBookingStatus()), "Prototype draft should be unsaved and pending");
 
         memento.BookingDraft caretakerDraft = new memento.BookingDraft();
         caretakerDraft.setMovie("Interstellar");
